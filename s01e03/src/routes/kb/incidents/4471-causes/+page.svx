@@ -1,0 +1,59 @@
+---
+layout: runbook
+title: '#4471 · three problems, not one'
+owner: support desk
+status: proposed
+reviewed: 2026-11-04
+signature: test@test.test
+---
+
+<script>
+  import reports from '#lib/data/reports-4471.json';
+  import notes from '#lib/data/desk-notes.json';
+  import CauseTable from '#lib/kb/CauseTable.svelte';
+  import Callout from '#lib/kb/Callout.svelte';
+  import RenderStamp from '#lib/kb/RenderStamp.svelte';
+  import { groupByCause, readAs, uniqueById } from '#lib/kb/causes';
+  import { tenantOf } from '#lib/kb/locales';
+
+  const merged = uniqueById(reports).filter((r) => r.mergedInto === 4471);
+  const groups = groupByCause(merged, tenantOf);
+  const g = (c) => groups.find((x) => x.cause === c);
+  const oneDay = readAs(g('parser'), notes.oneDayMove);
+  const parser = g('parser').reports.length - oneDay;
+  const hint = g('hint').reports.length;
+  const misTagged = g('parser').taggedAs.hint + g('hint').taggedAs.parser;
+</script>
+
+[#4471](/kb/incidents/4471) was marked known: one issue, one fix queued. It is three problems
+with three fixes. The {merged.length} reports in it split like this:
+
+| problem | reports | ticket |
+| --- | --- | --- |
+| `parser`: the shared parser reads every date month first | {parser} | [issue 1](https://github.com/siarheidzyhun/Mega/issues/1) |
+| `hint`: booking-v3 prints `MM/DD/YYYY` under the date field | {hint} | [issue 2](https://github.com/siarheidzyhun/Mega/issues/2) |
+| one-day shift: a date off by one day, not flipped | {oneDay} | [issue 3](https://github.com/siarheidzyhun/Mega/issues/3) |
+
+<Callout>
+Fixing the parser closes {parser} of {merged.length}. The other {hint + oneDay} stay broken.
+</Callout>
+
+## Where the cause comes from
+
+The cause depends on the tenant: its locale and the booking form it runs. Intake only guesses from
+the reporter's browser, and the guess was wrong for {misTagged} reports, so counts here use the tenant.
+
+<CauseTable ticket={4471} />
+
+## Why the merge hid this
+
+[Decision 0001](/kb/decisions/0001-dedupe-by-subject) merges on the subject line alone. All three
+problems arrive under the same dozen subjects, so nobody reading the subject could tell them apart.
+
+## What to do
+
+- Fix the parser for the {parser} reports. Then re-check the other two.
+- Change the booking-v3 hint, or the way the form reads it, for the {hint} form reports at three tenants.
+- Give the {oneDay} one-day reports to engineering. The cause is not confirmed; the reports point at time zones.
+
+<RenderStamp {signature} />
